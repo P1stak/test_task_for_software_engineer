@@ -3,37 +3,42 @@ import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 import os
-import json
 import shutil
-import datetime
-from git import Repo
+import json
+from datetime import datetime
+import subprocess
 
 def build_script(repo_url, src_path, version):
-    print(f"[{datetime.datetime.now()}] Начало работы скрипта")
+    print(f"[{datetime.now()}] Начало работы скрипта")
     
-    # Клонирование репозитория
-    print(f"[{datetime.datetime.now()}] Клонирование репозитория {repo_url}")
-    repo_dir = "temp_repo"
-    Repo.clone_from(repo_url, repo_dir)
-    print(f"[{datetime.datetime.now()}] Репозиторий успешно клонирован")
+    # 1. Клонирование репозитория
+    repo_name = repo_url.split("/")[-1].replace(".git", "")
+    repo_path = f"temp_repo_{repo_name}"
+    print(f"[{datetime.now()}] Клонирование репозитория {repo_url}")
+    subprocess.run(["git", "clone", repo_url, repo_path], check=True)
     
-    # Удаление всех директорий, кроме исходного кода
-    print(f"[{datetime.datetime.now()}] Очистка ненужных директорий")
-    for item in os.listdir(repo_dir):
-        item_path = os.path.join(repo_dir, item)
-        if item != os.path.basename(src_path) and os.path.isdir(item_path):
-            shutil.rmtree(item_path)
-            print(f"[{datetime.datetime.now()}] Удалена директория: {item}")
+    # 2. Определяем, какие папки нужно сохранить (src_path)
+    src_dir = src_path.split("/")[0]  # "src" из "src/app"
+    print(f"[{datetime.now()}] Очистка ненужных директорий (кроме {src_dir})")
     
-    # Создание version.json
-    print(f"[{datetime.datetime.now()}] Создание version.json")
-    src_full_path = os.path.join(repo_dir, src_path)
-    files = []
+    # 3. Удаляем всё, кроме нужной папки (src)
+    for item in os.listdir(repo_path):
+        item_path = os.path.join(repo_path, item)
+        if item == src_dir:
+            continue  # Не удаляем папку с исходным кодом
+        if os.path.isdir(item_path):
+            print(f"[{datetime.now()}] Удалена директория: {item}")
+            shutil.rmtree(item_path, ignore_errors=True)
     
-    for root, dirs, filenames in os.walk(src_full_path):
-        for f in filenames:
-            if f.endswith(('.py', '.js', '.sh')):
-                files.append(f)
+    # 4. Создаём version.json внутри src/app
+    version_dir = os.path.join(repo_path, src_path)
+    os.makedirs(version_dir, exist_ok=True)  # Создаём папки, если их нет
+    
+    version_path = os.path.join(version_dir, "version.json")
+    files = [
+        f for f in os.listdir(version_dir)
+        if f.endswith((".py", ".js", ".sh"))
+    ]
     
     version_data = {
         "name": "hello world",
@@ -41,28 +46,23 @@ def build_script(repo_url, src_path, version):
         "files": files
     }
     
-    version_path = os.path.join(src_full_path, "version.json")
-    with open(version_path, 'w') as f:
+    print(f"[{datetime.now()}] Создание version.json в {version_path}")
+    with open(version_path, "w") as f:
         json.dump(version_data, f, indent=4)
     
-    print(f"[{datetime.datetime.now()}] Файл version.json создан")
+    # 5. Создаём архив
+    archive_base = src_path.split("/")[-1]  # "app"
+    archive_name = f"{archive_base}{datetime.now().strftime('%Y%m%d')}.zip"
+    print(f"[{datetime.now()}] Создание архива {archive_name}")
+    shutil.make_archive(archive_base, "zip", version_dir)
     
-    # Создание архива
-    print(f"[{datetime.datetime.now()}] Создание архива")
-    last_dir = os.path.basename(src_path)
-    today = datetime.datetime.now().strftime("%d%m%Y")
-    archive_name = f"{last_dir}{today}.zip"
-    
-    shutil.make_archive(archive_name.replace('.zip', ''), 'zip', src_full_path)
-    
-    print(f"[{datetime.datetime.now()}] Архив {archive_name} создан")
-    print(f"[{datetime.datetime.now()}] Работа скрипта завершена")
+    # 6. Удаляем временную папку (опционально)
+    shutil.rmtree(repo_path, ignore_errors=True)
+    print(f"[{datetime.now()}] Готово! Архив: {archive_name}")
 
 if __name__ == "__main__":
-    
-    # Пример вызова:
     build_script(
-        "https://github.com/paulbouwer/hello-kubernetes",
+        "https://github.com/paulbouwer/hello-kubernetes.git",
         "src/app",
         "25.3000"
     )
