@@ -5,43 +5,56 @@ import time
 def get_time_data():
     url = "https://yandex.com/time/sync.json?geo=213"
     
-    # Запрос и вывод сырого ответа
-    response = requests.get(url)
-    print("Сырой ответ:")
-    print(response.text)
-    
-    # Человекочитаемый формат и временная зона
-    data = response.json()
-    timestamp = data['time'] / 1000  # преобразуем в секунды
-    human_time = datetime.datetime.fromtimestamp(timestamp)
-    timezone = data['clocks'][0]['name']
-    
-    print(f"\nЧеловекочитаемое время: {human_time}")
-    print(f"Временная зона: {timezone}")
-    
-    # Дельта времени
-    start_time = datetime.datetime.now()
-    response = requests.get(url)
-    data = response.json()
-    server_time = datetime.datetime.fromtimestamp(data['time'] / 1000)
-    delta = server_time - start_time
-    
-    print(f"\nДельта времени (1 запрос): {delta.total_seconds()} секунд")
-    
-    # Средняя дельта по 5 запросам
-    deltas = []
-    for i in range(5):
-        start = datetime.datetime.now()
-        response = requests.get(url)
+    try:
+        # a) Запрос и вывод сырого ответа
+        print("Отправка запроса к API...")
+        start_request = time.perf_counter()  # Точный замер времени
+        response = requests.get(url, timeout=5)  # Таймаут 5 секунд
+        request_duration = time.perf_counter() - start_request
+        
+        print("\nСырой ответ API:")
+        print(response.text)
+        
+        data = response.json()
+        
+        # b) Человекочитаемое время и временная зона
+        timestamp = data['time'] / 1000
+        human_time = datetime.datetime.fromtimestamp(timestamp)
+        
+        # Получаем временную зону
+        timezone = data.get('clocks', {}).get('213', {}).get('name', 'не указана')
+        
+        print(f"\nТекущее время: {human_time}")
+        print(f"Временная зона: {timezone}")
+        print(f"Время выполнения запроса: {request_duration:.3f} сек.")
+        
+        # c) Замер дельты времени
+        print("\nЗамер задержки...")
+        start_time = time.perf_counter()
+        response = requests.get(url, timeout=5)
         data = response.json()
         server_time = datetime.datetime.fromtimestamp(data['time'] / 1000)
-        delta = server_time - start
-        deltas.append(delta.total_seconds())
-        print(f"Запрос {i+1}: дельта = {delta.total_seconds()} секунд")
-        time.sleep(1)  # чтобы не нагружать сервер
-    
-    avg_delta = sum(deltas) / len(deltas)
-    print(f"\nСредняя дельта по 5 запросам: {avg_delta} секунд")
+        delta = (time.perf_counter() - start_time) * 1000  # в миллисекундах
+        
+        print(f"Дельта времени (1 запрос): {delta:.3f} мс.")
+        
+        # d) Средняя дельта по 5 запросам
+        print("\nИзмерение средней задержки (5 запросов)...")
+        deltas = []
+        for i in range(5):
+            start = time.perf_counter()
+            response = requests.get(url, timeout=5)
+            data = response.json()
+            delta = (time.perf_counter() - start) * 1000
+            deltas.append(delta)
+            print(f"Запрос {i+1}: дельта = {delta:.3f} мс.")
+            time.sleep(1)  # Пауза между запросами
+        
+        avg_delta = sum(deltas) / len(deltas)
+        print(f"\nСредняя дельта: {avg_delta:.3f} мс.")
+
+    except Exception as e:
+        print(f"\n⚠️ Ошибка: {e}")
 
 if __name__ == "__main__":
     get_time_data()
