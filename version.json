@@ -1,0 +1,5 @@
+{
+    "name": "hello world",
+    "version": "25.3000",
+    "files": [ "server.js" ]
+}
