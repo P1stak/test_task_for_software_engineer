@@ -1,3 +1,7 @@
+import sys
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 import requests
 import datetime
 import time
@@ -12,7 +16,7 @@ def get_time_data():
         response = requests.get(url, timeout=5)  # Таймаут 5 секунд
         request_duration = time.perf_counter() - start_request
         
-        print("\nСырой ответ API:")
+        print("\nСырой ответ от API:")
         print(response.text)
         
         data = response.json()
