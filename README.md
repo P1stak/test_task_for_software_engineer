@@ -12,7 +12,6 @@
 ## 1. Как тестировать
 
 ### 1. Подготовка
-- Установите Python 3.12+ и Git
 - Склонируйте репозиторий:
   ```bash
   git clone https://github.com/P1stak/test_task_for_software_engineer.git
