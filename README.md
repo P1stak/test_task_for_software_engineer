@@ -61,7 +61,7 @@ python version_generator.py 3.7.5 config.json
 
 🔹 service_mover.sh
 ```bash
-sudo bash service_mover.sh
+bash service_mover.sh
 ```
 Что делает:
 - Ищет юниты foobar-*, останавливает их.
